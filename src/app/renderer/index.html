@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+    <title>Heirloom Quant</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <h1>Heirloom Quant <span class="ver">2024.0.37</span></h1>
+        <p class="tag">Cross-platform financial planning calculator suite</p>
+      </div>
+      <div class="actions">
+        <button id="btn-new" title="Reset inputs">New</button>
+        <button id="btn-load" title="Open scenario">Open…</button>
+        <button id="btn-save" title="Save scenario">Save…</button>
+        <button id="btn-export" title="Export schedule to CSV">Export CSV</button>
+        <button id="btn-afr" title="Interest rate settings" class="afr-btn">§ Rates</button>
+      </div>
+    </header>
+
+    <!-- Interest Settings panel (hidden by default) -->
+    <div id="afr-panel" class="afr-panel hidden" role="dialog" aria-label="Interest Rate Settings">
+      <div class="afr-panel-header">
+        <h3>Interest Rate Settings</h3>
+        <button id="afr-close" aria-label="Close" title="Close">×</button>
+      </div>
+      <div class="afr-panel-body">
+        <label class="afr-toggle" title="When enabled, IRS AFR is pre-filled into applicable rate fields">
+          <input type="checkbox" id="afr-use-default" />
+          <span>Use IRS AFR as default rate</span>
+        </label>
+
+        <div id="afr-controls" class="afr-controls">
+          <label>
+            <span class="ctrl-lbl">Term Override</span>
+            <select id="afr-term">
+              <option value="auto">Auto (per calculator)</option>
+              <option value="short">Short-term (≤3 yr)</option>
+              <option value="mid">Mid-term (3–9 yr)</option>
+              <option value="long">Long-term (&gt;9 yr)</option>
+            </select>
+          </label>
+          <label>
+            <span class="ctrl-lbl">Compounding</span>
+            <select id="afr-compounding">
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="semiannual">Semiannual</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="afr-rates-table" class="afr-rates-table"></div>
+
+        <div class="afr-meta">
+          <span id="afr-updated">Updated: —</span>
+          <button id="afr-refresh" title="Fetch latest rates from IRS">↺ Refresh</button>
+        </div>
+
+        <p class="afr-disclaimer">
+          For planning estimates only — verify official IRS rates before filing or advising.
+        </p>
+      </div>
+    </div>
+
+    <nav id="tabs" class="tabs" role="tablist"></nav>
+
+    <main class="layout">
+      <aside id="calc-list" class="calc-list" aria-label="Calculator list"></aside>
+
+      <section class="workarea">
+        <header class="workarea-head">
+          <h2 id="calc-title">Select a calculator</h2>
+          <p id="calc-desc" class="desc"></p>
+        </header>
+
+        <div class="grid">
+          <form id="inputs-form" class="inputs" autocomplete="off"></form>
+
+          <div class="results">
+            <div id="kpis" class="kpis"></div>
+            <div id="schedule" class="schedule"></div>
+            <ul id="notes" class="notes"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span id="status">Ready.</span>
+      <span class="grow"></span>
+      <span class="muted">© Heirloom Quant</span>
+    </footer>
+
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

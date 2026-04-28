@@ -1,0 +1,85 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write   # needed to create GitHub Releases on tag pushes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: mac
+          - os: windows-latest
+            label: win
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test --silent
+        continue-on-error: false
+
+      - name: Build macOS
+        if: matrix.label == 'mac'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'  # skip codesigning unless secret is set
+        run: |
+          npm run build
+          npx electron-builder --mac --x64 --arm64 --publish=never
+
+      - name: Build Windows
+        if: matrix.label == 'win'
+        run: |
+          npm run build
+          npx electron-builder --win --x64 --publish=never
+
+      # Upload build output as a workflow run artifact (all builds)
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: heirloom-quant-${{ matrix.label }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+          if-no-files-found: warn
+
+      # On a version tag, attach artifacts to a GitHub Release
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # Create the release if it doesn't exist yet (first matrix job creates it,
+          # second uploads to the same release).
+          gh release create "$TAG" \
+            --title "Heirloom Quant $TAG" \
+            --notes "Automated release for $TAG. See CHANGELOG / README for details." \
+            --draft=false \
+            2>/dev/null || true
+          # Upload all built artifacts
+          for f in release/*.dmg release/*.zip release/*.exe; do
+            [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber || true
+          done

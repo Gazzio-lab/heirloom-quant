@@ -1,0 +1,93 @@
+{
+  "name": "heirloom-quant",
+  "version": "2024.0.37",
+  "description": "Cross-platform financial calculator suite (Investment, Estate, Tax, Retirement, 199A, etc.) — Heirloom Quant.",
+  "author": {
+    "name": "Heirloom Quant",
+    "email": "support@example.com"
+  },
+  "license": "MIT",
+  "main": "dist/app/main.js",
+  "scripts": {
+    "clean": "rimraf dist out release",
+    "build:core": "tsc -p tsconfig.json",
+    "build:renderer": "node scripts/copy-renderer.js",
+    "build": "npm run clean && npm run build:core && npm run build:renderer",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --enable-logging",
+    "test": "jest",
+    "lint": "eslint \"src/**/*.ts\"",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:all": "npm run build && electron-builder -mw"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {},
+  "build": {
+    "appId": "com.heirloomquant.desktop",
+    "productName": "Heirloom Quant",
+    "copyright": "Copyright © 2024 Heirloom Quant",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/data/static",
+        "to": "data",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Heirloom Quant ${version}",
+      "writeUpdateInfo": false
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Heirloom Quant"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Office;Finance"
+    }
+  }
+}
