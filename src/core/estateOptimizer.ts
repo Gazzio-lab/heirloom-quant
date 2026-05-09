@@ -85,6 +85,15 @@ function fvGrow(v: number, r: number, n: number): number {
   return v * Math.pow(1 + r, n);
 }
 
+/**
+ * Future value of a level annual gift/contribution series over n years.
+ * Safe at r = 0 (returns annualAmount * n) instead of evaluating 0/0.
+ */
+function fvAnnualSeries(annualAmount: number, r: number, n: number): number {
+  if (Math.abs(r) < 1e-12) return annualAmount * n;
+  return annualAmount * ((Math.pow(1 + r, n) - 1) / r);
+}
+
 // ---- optimizer ----------------------------------------------------------
 
 export function runOptimizer(input: OptimizerInput): OptimizationReport {
@@ -108,12 +117,15 @@ export function runOptimizer(input: OptimizerInput): OptimizationReport {
     (() => {
       const linealBens = beneficiaries.filter((b) => b.relation === 'lineal').length;
       const annualGift = ANNUAL_GIFT_EXCLUSION * Math.max(linealBens, 1) * (filingStatus === 'married' ? 2 : 1);
-      const removed = annualGift * ((Math.pow(1 + r, n) - 1) / r); // FV of gifts removed from estate
+      const removed = fvAnnualSeries(annualGift, r, n); // safe at r=0
       const reducedEstate = Math.max(futureGross - removed, 0);
-      return buildStrategy(
+      const st = buildStrategy(
         'annual-gift', reducedEstate, filingStatus, beneficiaries,
         [`Annual gifts of ${fmt(annualGift)} to ${linealBens} lineal heirs over ${n} years.`],
       );
+      // Gifts arrive in heirs' hands free of estate tax; count their FV toward total family wealth
+      st.wealthTransferred = st.netToHeirs + removed;
+      return st;
     })(),
 
     // 2. Lifetime exemption use now
@@ -122,10 +134,13 @@ export function runOptimizer(input: OptimizerInput): OptimizationReport {
       const giftedNow = Math.min(exemption, futureGross * 0.5);
       const removedGrowth = fvGrow(giftedNow, r, n);
       const reducedEstate = Math.max(futureGross - removedGrowth, 0);
-      return buildStrategy(
+      const st = buildStrategy(
         'lifetime-gift', reducedEstate, filingStatus, beneficiaries,
         ['Front-load lifetime exemption — removes future appreciation from estate.'],
       );
+      // Gifted assets grow outside estate; add their FV to total family wealth
+      st.wealthTransferred = st.netToHeirs + removedGrowth;
+      return st;
     })(),
 
     // 3. GRAT (Grantor Retained Annuity Trust) — 5-year zeroed-out
@@ -135,33 +150,37 @@ export function runOptimizer(input: OptimizerInput): OptimizationReport {
       const annuity = fundingAmount / annuityFactor;
       const actualReturn = fvGrow(fundingAmount, r, 5);
       const gratRemainder = Math.max(actualReturn - annuity * 5, 0);
-      // GRAT remainder escapes estate
+      // GRAT remainder passes to heirs tax-free; annuity returns to grantor (estate-neutral)
       const reducedFuture = Math.max(futureGross - gratRemainder, 0);
-      return buildStrategy(
+      const st = buildStrategy(
         'grat', reducedFuture, filingStatus, beneficiaries,
         [
           `Zeroed-out GRAT — fund with ${fmt(fundingAmount)}.`,
           `Projected remainder to heirs: ${fmt(gratRemainder)} (assumes growth > §7520 rate of ${(afr * 1.2 * 100).toFixed(2)}%).`,
         ],
       );
+      st.wealthTransferred = st.netToHeirs + gratRemainder;
+      return st;
     })(),
 
     // 4. Dynasty Trust / IDGT installment sale
     (() => {
       const saleValue = grossEstate * 0.50;
-      const noteInterest = saleValue * afr;
-      const assetGrowth  = fvGrow(saleValue, r, n);
-      const noteBalance  = saleValue; // interest-only balloon
-      const transferred  = assetGrowth - noteBalance;
-      const reducedFuture = Math.max(futureGross - transferred, 0);
-      return buildStrategy(
+      const assetGrowth      = fvGrow(saleValue, r, n);
+      const noteBalance      = saleValue; // interest-only balloon
+      const trustAppreciation = Math.max(assetGrowth - noteBalance, 0);
+      // Trust appreciation escapes estate; note principal returns to grantor (estate-neutral)
+      const reducedFuture = Math.max(futureGross - trustAppreciation, 0);
+      const st = buildStrategy(
         'dynasty-idgt', reducedFuture, filingStatus, beneficiaries,
         [
           `IDGT installment sale of ${fmt(saleValue)} at ${(afr * 100).toFixed(2)}% AFR.`,
-          `Projected trust appreciation beyond note: ${fmt(transferred)}.`,
+          `Projected trust appreciation beyond note: ${fmt(trustAppreciation)}.`,
           'Interest income on note is excluded from estate; note paid at maturity.',
         ],
       );
+      st.wealthTransferred = st.netToHeirs + trustAppreciation;
+      return st;
     })(),
 
     // 5. Charitable strategy (CRT + remainder to charity)
@@ -185,9 +204,9 @@ export function runOptimizer(input: OptimizerInput): OptimizationReport {
         .filter((a) => a.category === 'insurance')
         .reduce((s, a) => s + a.value, 0);
       const ilit = lifeInsurance > 0 ? lifeInsurance : grossEstate * 0.10;
-      // Insurance inside ILIT removes death benefit from estate
+      // Insurance death benefit held outside estate; heirs receive both
       const reducedFuture = Math.max(futureGross - ilit, 0);
-      return buildStrategy(
+      const st = buildStrategy(
         'ilit', reducedFuture, filingStatus, beneficiaries,
         [
           `ILIT holds ${fmt(ilit)} life insurance outside of estate.`,
@@ -195,31 +214,39 @@ export function runOptimizer(input: OptimizerInput): OptimizationReport {
           'Provides estate liquidity for heirs without increasing estate tax.',
         ],
       );
+      st.wealthTransferred = st.netToHeirs + ilit;
+      return st;
     })(),
 
     // 7. Combined optimal — GRAT + Annual gifts + ILIT
     (() => {
       const linealBens = beneficiaries.filter((b) => b.relation === 'lineal').length || 1;
       const annualGift = ANNUAL_GIFT_EXCLUSION * linealBens * (filingStatus === 'married' ? 2 : 1);
-      const annualGiftFV = annualGift * ((Math.pow(1 + r, n) - 1) / r);
+      const annualGiftFV = fvAnnualSeries(annualGift, r, n); // safe at r=0
       const fundingAmount = grossEstate * 0.30;
       const annuityFactor = (1 - Math.pow(1 + afr, -5)) / afr;
       const annuity = fundingAmount / annuityFactor;
       const gratRemainder = Math.max(fvGrow(fundingAmount, r, 5) - annuity * 5, 0);
       const ilit = assets.filter((a) => a.category === 'insurance').reduce((s, a) => s + a.value, 0);
       const reducedFuture = Math.max(futureGross - annualGiftFV - gratRemainder - ilit, 0);
-      return buildStrategy(
+      const st = buildStrategy(
         'combined', reducedFuture, filingStatus, beneficiaries,
         [
           'Combination strategy: GRAT + annual gifting + ILIT.',
           `Annual gifts ${fmt(annualGift)}/yr · GRAT remainder ${fmt(gratRemainder)} · ILIT ${fmt(ilit)}.`,
         ],
       );
+      // All three components add to total family wealth
+      st.wealthTransferred = st.netToHeirs + annualGiftFV + gratRemainder + ilit;
+      return st;
     })(),
   ];
 
-  // sort by net-to-heirs descending
-  strategies.sort((a, b) => b.netToHeirs - a.netToHeirs);
+  // Sort by total family wealthTransferred, which includes both the net-after-tax estate
+  // AND any assets already transferred out (gifts, GRAT remainder, trust appreciation, ILIT).
+  // This prevents strategies that reduce the taxable estate from ranking below "No Planning"
+  // simply because their reduced-estate value is smaller.
+  strategies.sort((a, b) => b.wealthTransferred - a.wealthTransferred);
 
   // PA breakdown
   const baselineFedTax = federalTax(futureGross, filingStatus);
