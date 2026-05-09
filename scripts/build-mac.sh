@@ -1,30 +1,35 @@
 #!/usr/bin/env bash
 # Build Heirloom Quant for macOS (.app + .dmg).
-# Run on a Mac. Output goes to ./release/.
-
+# Usage: ./scripts/build-mac.sh
+# Output artifacts go to ./release/
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 echo "==> Verifying environment"
-node --version
-npm --version
+node --version && npm --version
 
 echo "==> Installing dependencies"
-if [ ! -d node_modules ]; then
-  npm ci || npm install
-fi
+[ -d node_modules ] || npm ci || npm install
 
 echo "==> Cleaning previous build"
 npm run clean
 
-echo "==> Compiling TypeScript (main + renderer) and copying assets"
-npm run build
+echo "==> Building main process (TypeScript)"
+npm run build:main
 
-echo "==> Packaging mac targets via electron-builder"
-npx electron-builder --mac --x64 --arm64
+echo "==> Building renderer (Vite + React + TailwindCSS)"
+npm run build:renderer
+
+echo "==> Packaging macOS targets (x64 + arm64)"
+CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --x64 --arm64
 
 echo
 echo "==> Build complete. Artifacts in ./release/"
-ls -lh release/ | grep -E '\.(dmg|zip|app)' || true
+ls -lh release/ | grep -E '\.(dmg|zip|app)' 2>/dev/null || true
+echo
+echo "Installation:"
+echo "  1. Open the .dmg file."
+echo "  2. Drag Heirloom Quant.app into /Applications."
+echo "  3. On first launch: right-click → Open to bypass Gatekeeper."

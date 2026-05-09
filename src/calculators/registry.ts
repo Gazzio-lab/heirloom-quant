@@ -16,13 +16,14 @@ import { taxesCalculators } from './taxes';
 import { retirementCalculators } from './retirement';
 import { pvfvCalculators } from './pvfv';
 import { section199ACalculators } from './section199a';
+import { estatePlanningCalculators } from './estatePlanning';
 
 export interface Tab {
   id: string;
   label: string;
 }
 
-/** The 16 tabs for Heirloom Quant, in display order. */
+/** The 17 tabs for Heirloom Quant, in display order. */
 export const TABS: Tab[] = [
   { id: 'investment',  label: 'Investment' },
   { id: 'inflation',   label: 'Inflation' },
@@ -39,7 +40,8 @@ export const TABS: Tab[] = [
   { id: 'taxes',       label: 'Taxes' },
   { id: 'retirement',  label: 'Retirement' },
   { id: 'pvfv',        label: 'Present / Future Value' },
-  { id: 'section199a', label: '§199A' },
+  { id: 'section199a',    label: '§199A' },
+  { id: 'estateplanning', label: 'PA & Estate Tools' },
 ];
 
 const ALL: Calculator[] = [
@@ -59,6 +61,7 @@ const ALL: Calculator[] = [
   ...retirementCalculators,
   ...pvfvCalculators,
   ...section199ACalculators,
+  ...estatePlanningCalculators,
 ];
 
 const BY_ID = new Map<string, Calculator>(ALL.map(c => [c.id, c]));
