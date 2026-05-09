@@ -35,10 +35,29 @@ export default function App() {
 
     init();
 
-    // Accelerators from main process
+    // Accelerators from main process — wire all menu/keyboard shortcuts to the React UI.
+    // The header buttons carry IDs so we can proxy clicks; the store handles state changes.
     cruncher().onAction?.((action: string) => {
-      if (action === 'action:open-estate-optimizer') {
-        useAppStore.getState().setView('estate-optimizer');
+      const store = useAppStore.getState();
+      switch (action) {
+        case 'action:new-scenario':
+          store.setLastResult(null, {});
+          store.setStatus('New scenario.');
+          break;
+        case 'action:open-scenario':
+          // Navigate to calculator view, then trigger the header’s Open button
+          store.setView('calculator');
+          setTimeout(() => document.getElementById('btn-load')?.click(), 50);
+          break;
+        case 'action:save-scenario':
+          document.getElementById('btn-save')?.click();
+          break;
+        case 'action:export-csv':
+          document.getElementById('btn-export')?.click();
+          break;
+        case 'action:open-estate-optimizer':
+          store.setView('estate-optimizer');
+          break;
       }
     });
   }, []);
