@@ -32,7 +32,8 @@ function createWindow(): void {
     },
   });
 
-  const indexPath = path.join(__dirname, 'renderer', 'index.html');
+  // Load the Vite-built renderer (dist/renderer/index.html)
+  const indexPath = path.join(__dirname, '..', 'renderer', 'index.html');
   mainWindow.loadFile(indexPath);
 
   // Open external links in the user's browser
@@ -161,6 +162,25 @@ ipcMain.handle('cruncher:exportCSV', async (_evt, payload: { rows: Record<string
     ),
   ].join('\n');
   await fs.writeFile(filePath, csv, 'utf8');
+  return { filePath };
+});
+
+// ----- PDF export -----
+
+ipcMain.handle('cruncher:exportPDF', async () => {
+  if (!mainWindow) return { error: 'no window' };
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save PDF',
+    defaultPath: 'heirloom-quant-report.pdf',
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  });
+  if (canceled || !filePath) return { canceled: true };
+  const data = await mainWindow.webContents.printToPDF({
+    printBackground: true,
+    pageSize: 'Letter',
+    margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 },
+  });
+  await fs.writeFile(filePath, data);
   return { filePath };
 });
 

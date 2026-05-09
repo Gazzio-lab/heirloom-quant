@@ -1,12 +1,12 @@
 import { listCalculators, TABS } from '../src/calculators/registry';
 
 describe('calculator registry', () => {
-  test('all 16 tabs are present', () => {
-    expect(TABS.length).toBe(16);
+  test('all 17 tabs are present', () => {
+    expect(TABS.length).toBe(17);
     expect(TABS.map(t => t.id)).toEqual(expect.arrayContaining([
       'investment','inflation','realestate','insurance','networth','goals',
       'budgeting','valuation','estate','trusts','charitable','techniques',
-      'taxes','retirement','pvfv','section199a',
+      'taxes','retirement','pvfv','section199a','estateplanning',
     ]));
   });
 

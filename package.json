@@ -10,32 +10,47 @@
   "main": "dist/app/main.js",
   "scripts": {
     "clean": "rimraf dist out release",
-    "build:core": "tsc -p tsconfig.json",
-    "build:renderer": "node scripts/copy-renderer.js",
-    "build": "npm run clean && npm run build:core && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "build": "npm run clean && npm run build:main && npm run build:renderer",
+    "dev": "concurrently --kill-others \"vite build --watch\" \"wait-on dist/renderer/index.html && electron . --enable-logging\"",
     "start": "npm run build && electron .",
-    "dev": "npm run build && electron . --enable-logging",
     "test": "jest",
-    "lint": "eslint \"src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\" \"src/**/*.tsx\"",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "dist:all": "npm run build && electron-builder -mw"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.30",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
+    "postcss": "^8.5.14",
     "rimraf": "^5.0.5",
+    "tailwindcss": "^4.3.0",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.3",
+    "vite": "^8.0.11"
   },
-  "dependencies": {},
+  "dependencies": {
+    "lucide-react": "^1.14.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "recharts": "^3.8.1",
+    "zustand": "^5.0.13"
+  },
   "build": {
     "appId": "com.heirloomquant.desktop",
     "productName": "Heirloom Quant",
@@ -49,18 +64,33 @@
       "dist/**/*",
       "package.json"
     ],
+    "extraFiles": [],
     "extraResources": [
       {
         "from": "src/data/static",
         "to": "data",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
       "category": "public.app-category.finance",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "build/icon.icns",
       "hardenedRuntime": true,
@@ -72,8 +102,18 @@
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico"
     },
@@ -86,7 +126,9 @@
       "shortcutName": "Heirloom Quant"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "Office;Finance"
     }
   }

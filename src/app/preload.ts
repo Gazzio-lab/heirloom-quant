@@ -14,6 +14,7 @@ const api = {
   loadScenario: () => ipcRenderer.invoke('cruncher:loadScenario'),
   exportCSV: (rows: any[], suggestedName?: string) =>
     ipcRenderer.invoke('cruncher:exportCSV', { rows, suggestedName }),
+  exportPDF: () => ipcRenderer.invoke('cruncher:exportPDF'),
   onAction: (cb: (action: string) => void) => {
     const handler = (_evt: unknown, action: string) => cb(action);
     const channels = [
